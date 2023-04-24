@@ -3,24 +3,78 @@
  * @LastEditors: Yilin
  * @Description: Do not edit
  * @Date: 2023-03-30 23:44:43
- * @LastEditTime: 2023-03-31 02:39:22
+ * @LastEditTime: 2023-04-24 22:41:44
+ * @FilePath: \helmet-project\src\pages\ImageTask.tsx
+ */
+/*
+ * @Author: Yilin
+ * @LastEditors: Yilin
+ * @Description: Do not edit
+ * @Date: 2023-03-30 23:44:43
+ * @LastEditTime: 2023-04-24 02:12:36
  * @FilePath: \helmet-project\src\pages\ImageTask.tsx
  */
 
 import { PageContainer } from '@ant-design/pro-components';
 import { useModel } from '@umijs/max';
-import { Card, Col, Divider, message, Row, theme, Upload, UploadProps,Image, Button, Statistic } from 'antd';
-import { RcFile, UploadChangeParam } from 'antd/es/upload';
+import { Card, Col,message, Row, Upload, UploadProps,Image, Button, Statistic } from 'antd';
+import { RcFile,  } from 'antd/es/upload';
 import React, { useState } from 'react';
-import { ArrowDownOutlined, ArrowUpOutlined, DownloadOutlined, LoadingOutlined, PlusOutlined } from '@ant-design/icons';
-
-import styles from './style.less';
+import { Table } from 'antd';
 import MyButton from '@/components/MyComponents/Button';
+import { ColumnsType } from 'antd/es/table';
+
 /**
  *  图像识别
  * @param param0
  * @returns
  */
+
+interface DataType {
+  xmin: number,
+  ymin: number,
+  xmax: number,
+  ymax: number,
+  confidence: number,
+ class: number,
+  name: string
+  
+}
+
+const columns: ColumnsType<DataType> = [
+  {
+    title: 'Name',
+    dataIndex: 'name',
+    key: 'name',
+  },
+  {
+    title: 'Confidence',
+    dataIndex: 'confidence',
+    key: 'confidence',
+  },
+  {
+    title: 'Xmin',
+    dataIndex: 'xmin',
+    key: 'xmin',
+  },
+  {
+    title: 'Ymin',
+    dataIndex: 'ymin',
+    key: 'ymin',
+  },
+  {
+    title: 'Xmax',
+    dataIndex: 'xmax',
+    key: 'xmax',
+  },
+  {
+    title: 'Ymax',
+    dataIndex: 'ymax',
+    key: 'ymax',
+  },
+
+];
+
 
 const getBase64 = (img: RcFile, callback: (url: string) => void) => {
   const reader = new FileReader();
@@ -28,46 +82,119 @@ const getBase64 = (img: RcFile, callback: (url: string) => void) => {
   reader.readAsDataURL(img);
 };
 
-const beforeUpload = (file: RcFile) => {
-  const isJpgOrPng = file.type === 'image/jpeg' || file.type === 'image/png';
-  if (!isJpgOrPng) {
-    message.error('You can only upload JPG/PNG file!');
+
+// function removeFileExtension(name: string): string {
+//   const lastIndex = name.lastIndexOf(".");
+//   if (lastIndex === -1) {
+//     return name;
+//   }
+//   return name.substring(0, lastIndex);
+  
+// }
+  
+
+
+const mergeList = (list: { [key: string]: Obj[] }) => {
+  
+  let mergeList:DataType[] = []
+
+  for (const key in list) {
+    if (Object.prototype.hasOwnProperty.call(list, key)) {
+      
+      const tmpList: DataType[] = [...list[key]]
+      
+      mergeList = [...mergeList,...tmpList]
+    }
+
   }
-  const isLt2M = file.size / 1024 / 1024 < 2;
-  if (!isLt2M) {
-    message.error('Image must smaller than 2MB!');
-  }
-  return isJpgOrPng && isLt2M;
-};
+    
+  
+return mergeList
+
+
+}
+
 
 
 const ImageTask: React.FC = () => {
-  const { token } = theme.useToken();
+
   const { initialState } = useModel('@@initialState');
 
-  const [loading, setLoading] = useState(false);
-  const [imageUrl, setImageUrl] = useState<string>();
+  const [imageUrl, setImageUrl] = useState<string>("");
+  const [imageName, setImageName] = useState<string>("");
+  //base64
+  const [imageTarget, setImageTarget] = useState<string>("");
 
-  const handleChange: UploadProps['onChange'] = (info: UploadChangeParam<UploadFile>) => {
-    if (info.file.status === 'uploading') {
-      setLoading(true);
-      return;
+  const[data,setData] = useState<DataType[]>([])
+
+  const downloadImage = (fileName: string) => {
+    
+
+    if (imageTarget === "") {
+      message.error(`请上传文件.`);
+      return
     }
-    if (info.file.status === 'done') {
-      // Get this url from response in real world.
-      getBase64(info.file.originFileObj as RcFile, (url) => {
-        setLoading(false);
-        setImageUrl(url);
-      });
-    }
+    const link = document.createElement('a');
+    link.href = imageTarget!;
+    link.download = fileName;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+
+    message.success(`${fileName} 导出成功`);
+  };
+  
+
+  const props: UploadProps = {
+    name: 'file_my',
+    action: 'http://localhost:8000/api/file/target',
+    withCredentials: true,
+
+    accept:'image/*',
+    
+    headers: {
+      authorization: 'authorization-text',
+    },
+    showUploadList: false,
+    onChange(info) {
+      if (info.file.status !== 'uploading') {
+        console.log(info.file, info.fileList);
+      }
+      if (info.file.status === 'done') {
+        getBase64(info.file.originFileObj as RcFile, (url) => {
+          // console.log(url)
+          
+          setImageUrl(url)
+          console.log(info.file)
+          setImageName(info.file.name)
+        });
+          //目标 图像
+        setImageTarget(info.file.response.data)
+          //目标 info
+        setData(mergeList(info.file.response.list))
+        
+        
+        message.success(`${info.file.name} 识别成功`);
+      } else if (info.file.status === 'error') {
+        message.error(`${info.file.name} 上传失败.`);
+      }
+    },
+    progress: {
+      strokeColor: {
+        '0%': '#108ee9',
+        '100%': '#87d068',
+      },
+      strokeWidth: 3,
+      format: (percent) => percent && `${parseFloat(percent.toFixed(2))}%`,
+    },
   };
 
-  const uploadButton = (
-    <div>
-      {loading ? <LoadingOutlined /> : <PlusOutlined />}
-      <div style={{ marginTop: 8 }}>上传</div>
-    </div>
-  );
+
+
+
+
+  
+
   return (
     <PageContainer>
       <Card
@@ -83,43 +210,48 @@ const ImageTask: React.FC = () => {
       >
 
 
-          
+        
+        <br/>
+      <br/>
       
-        <Row>
-      <Col span={4}></Col>
-          <Col span={4}><MyButton context='识别'></MyButton></Col>
-          <Col span={7}></Col>
-      <Col span={4}><MyButton context='导出'></MyButton></Col>
-      <Col span={1}></Col>
-       </Row>
-
-        {/* <Upload
-        name="avatar"
-        listType="picture-card"
-        className={styles.co1}
-        showUploadList={false}
-        action="https://www.mocky.io/v2/5cc8019d300000980a055e76"
-        beforeUpload={beforeUpload}
-        onChange={handleChange} 
+        <Row align='middle'>
+          {/* <Col span={4}></Col> */}
           
-      >
-        {imageUrl ? <img src={imageUrl} alt="avatar" style={{ width: '200%'}} /> : uploadButton}
-        </Upload> */}
+          
+          <Col span={12} align='middle'><Upload {...props}><MyButton context='开始' onClick={()=>{console.log(1)}} ></MyButton>   </Upload></Col>
+
+          
+          {/* <Col span={7}></Col> */}
+      <Col span={12} align='middle'><MyButton context='导出'onClick={()=>{downloadImage(`识别后_${imageName}`)}}></MyButton></Col>
+      {/* <Col span={1}></Col> */}
+        </Row>
+        
+
+        <br/>
+     
+
+    
 
         <Card style={{ width: "100%" }}>
-        <Row>
-      <Col span={12}>原图：<Image
+        <Row align='middle'>
+      <Col span={12} align='middle'>原图📤<Image
             width={'95%'}
             height={'100%'}
-    src="https://zos.alipayobjects.com/rmsportal/jkjgkEfvpUPVyRjUImniVslZfWPnJuuZ.png"
+              src={imageUrl}
+              fallback='/image/upload.svg'
+              preview={false}
+              
           />
           </Col>
-          <Col span={12}  >
-          识别：<Image
+          <Col span={12}  align='middle'>
+          识别📥<Image
             width={'95%'}
             height={'100%'}
-    src="https://zos.alipayobjects.com/rmsportal/jkjgkEfvpUPVyRjUImniVslZfWPnJuuZ.png"
-          />
+                src={imageTarget}
+                preview={false}
+
+                fallback='/image/target.svg'
+              />
      
       </Col>
     </Row>
@@ -132,32 +264,10 @@ const ImageTask: React.FC = () => {
       <br/>
       <br/>
       
-      <Row gutter={16}>
-    <Col span={12}>
-      <Card bordered={false}>
-        <Statistic
-          title="Active"
-          value={11.28}
-          precision={2}
-          valueStyle={{ color: '#3f8600' }}
-          prefix={<ArrowUpOutlined />}
-          suffix="%"
-        />
-      </Card>
-    </Col>
-    <Col span={12}>
-      <Card bordered={false}>
-        <Statistic
-          title="Idle"
-          value={9.3}
-          precision={2}
-          valueStyle={{ color: '#cf1322' }}
-          prefix={<ArrowDownOutlined />}
-          suffix="%"
-        />
-      </Card>
-    </Col>
-  </Row>
+      
+        <Card><Table columns={columns} dataSource={data} /></Card>
+
+
         
     </PageContainer>
   );

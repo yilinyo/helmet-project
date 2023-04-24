@@ -3,7 +3,7 @@
  * @LastEditors: Yilin
  * @Description: Do not edit
  * @Date: 2023-03-31 14:20:20
- * @LastEditTime: 2023-04-05 20:24:01
+ * @LastEditTime: 2023-04-24 01:09:46
  * @FilePath: \helmet-project\src\plugins\globleRequest.ts
  */
 
@@ -27,7 +27,7 @@ const request = extend({
  * 请求前缀
  */
   prefix:
-    process.env.NODE_ENV === 'production' ? 'http://demo.yctor.icu' : '',
+    process.env.NODE_ENV === 'production' ? 'http://demo.yctor.icu' : 'http://localhost:8000',
   
 });
 
